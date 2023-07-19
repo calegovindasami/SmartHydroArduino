@@ -4,8 +4,8 @@
 #include <WiFiEspServer.h>
 
 // WiFi network settings
-char ssid[] = "Cal";      // newtork SSID (name). 8 or more characters
-char password[] = "passwords"; // network password. 8 or more characters
+char ssid[] = "SmartHydro";      // newtork SSID (name). 8 or more characters
+char password[] = "Password123"; // network password. 8 or more characters
 
 WiFiEspServer server(80);
 RingBuffer buf(8);
