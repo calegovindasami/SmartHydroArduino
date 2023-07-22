@@ -66,12 +66,12 @@ void loop() {
         }
 
         //Appending to URL returns the data
-        if (buf.endsWith("/data")) {
+        if (buf.endsWith("/M")) {
           message = "[\n {\n  \"PH\": \"1\",\n  \"EC\": \"5\",\n  \"Humidity\": \"356\",\n  \"Temperature\": \"28\"\n }\n]\n\n";
         }
 
         //Toggles LED
-        if (buf.endsWith("toggle")) {
+        if (buf.endsWith("/T")) {
           togglePin(ledPin);
         } 
       }
@@ -93,11 +93,13 @@ void togglePin(int pin) {
 	* Sends a http response along with a message.
 	*/
 void sendHttpResponse(WiFiEspClient client, String message) {
-  client.print(
+    client.print(
     "HTTP/1.1 200 OK\r\n"
     "Content-Type: application/json\r\n"
-    "Connection: close\r\n"
-    "\r\n");
+    "Connection: close\r\n");
 
-  client.print(message);
+  if (message.length() > 0) {
+    client.print("Content-Length:" + String(message.length()) + "\r\n\r\n");
+    client.print(message);
+  }
 }
