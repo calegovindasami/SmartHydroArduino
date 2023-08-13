@@ -2,7 +2,9 @@
 #include <WiFiEsp.h>
 #include <WiFiEspClient.h>
 #include <WiFiEspServer.h>
-
+#include <DHT.h>
+#include "DFRobot_PH.h"
+#include "DFRobot_EC.h"
 
 // WiFi network settings
 char ssid[] = "SmartHydro";       // newtork SSID (name). 8 or more characters
@@ -11,13 +13,23 @@ String message = "";
 
 WiFiEspServer server(80);
 RingBuffer buf(8);
-int ledPin = 13;
+
+#define LIGHT_PIN A7
+#define DHT_PIN 8
+#define PH_PIN A9
+#define EC_PIN A8
+#define FLOW_PIN A3
+
+#define DHTTYPE DHT22
+DFRobot_PH ph;
+DHT dht = DHT(DHT_PIN, DHTTYPE);
+
+DFRobot_EC ec;
 void setup() {
   Serial.begin(9600);
   Serial1.begin(115200);
   WiFi.init(&Serial1);  // Initialize ESP module using Serial1
-  Serial.print("WOW");
-  pinMode(ledPin, OUTPUT);
+
   // Check for the presence of the ESP module
   if (WiFi.status() == WL_NO_SHIELD) {
     Serial.println("WiFi module not detected. Please check wiring and power.");
@@ -43,12 +55,16 @@ void setup() {
 
   // Start the server
   server.begin();
+  ec.begin();
+  dht.begin();
+  ph.begin();
   Serial.println("Server started");
 }
 
 
 void loop() {
   WiFiEspClient client = server.available();  // Check if a client has connected
+
 
   if (client) {  // If a client is available
     buf.init();
@@ -67,12 +83,19 @@ void loop() {
 
         //Appending to URL returns the data
         if (buf.endsWith("/M")) {
-          message = "[\n {\n  \"PH\": \"1\",\n  \"EC\": \"5\",\n  \"Humidity\": \"356\",\n  \"Temperature\": \"28\"\n }\n]\n\n";
+          float temperature = dht.readTemperature();
+          float humidity = dht.readHumidity();
+          float lightLevel = getLightLevel();
+
+          float ecLevel = getEC(temperature);
+          float phLevel = getPH(temperature);
+
+          message = "[\n {\n  \"PH\": \"" + String(phLevel) + "\",\n \"Light Sensor\": \"" + String(lightLevel) + "\",\n  \"EC\": \"" + String(ecLevel) + "\",\n  \"Humidity\": \"" + String(humidity) + "\",\n  \"Temperature\": \"" + String(temperature) + "\"\n }\n]\n\n";
+          ec.calibration(ecLevel,temperature); 
         }
 
         //Toggles LED
         if (buf.endsWith("/T")) {
-          togglePin(ledPin);
         } 
       }
     }
@@ -82,16 +105,16 @@ void loop() {
 }
 
 
-	/**
-	* Inverts the reading of a pin.
-	*/
+  /**
+  * Inverts the reading of a pin.
+  */
 void togglePin(int pin) {
   digitalWrite(pin, !(digitalRead(pin)));
 }
 
-	/**
-	* Sends a http response along with a message.
-	*/
+  /**
+  * Sends a http response along with a message.
+  */
 void sendHttpResponse(WiFiEspClient client, String message) {
     client.print(
     "HTTP/1.1 200 OK\r\n"
@@ -102,4 +125,20 @@ void sendHttpResponse(WiFiEspClient client, String message) {
     client.print("Content-Length:" + String(message.length()) + "\r\n\r\n");
     client.print(message);
   }
+}
+
+
+//Need assistance to confirm if calculations are correct.
+float getLightLevel() {
+  return analogRead(LIGHT_PIN);
+}
+
+float getEC(float temperature) {
+  float ecVoltage = (float)analogRead(EC_PIN)/1024.0*5000.0; 
+  return ec.readEC(ecVoltage,temperature);
+}
+
+float getPH(float temperature) {
+  float phVoltage = analogRead(PH_PIN)/1024.0*5000; 
+  return ph.readPH(phVoltage, temperature);
 }
