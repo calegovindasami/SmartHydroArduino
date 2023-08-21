@@ -19,8 +19,9 @@ RingBuffer buf(8);
 #define PH_PIN A9
 #define EC_PIN A8
 #define FLOW_PIN A3
-
 #define DHTTYPE DHT22
+#define LED_PIN 9
+
 DFRobot_PH ph;
 DHT dht = DHT(DHT_PIN, DHTTYPE);
 
@@ -40,7 +41,6 @@ void setup() {
   Serial.print("Attempting to start AP ");
   Serial.println(ssid);
 
-
   IPAddress localIp(192, 168, 8, 14);  // create an IP address
   WiFi.configAP(localIp);              // set the IP address of the AP
 
@@ -49,9 +49,7 @@ void setup() {
   // last comma is encryption type
   WiFi.beginAP(ssid, 11, password, ENC_TYPE_WPA2_PSK);
 
-
   Serial.print("Access point started");
-
 
   // Start the server
   server.begin();
@@ -82,7 +80,7 @@ void loop() {
         }
 
         //Appending to URL returns the data
-        if (buf.endsWith("/M")) {
+        if (buf.endsWith("/getSensorData")) {
           float temperature = dht.readTemperature();
           float humidity = dht.readHumidity();
           float lightLevel = getLightLevel();
@@ -90,12 +88,21 @@ void loop() {
           float ecLevel = getEC(temperature);
           float phLevel = getPH(temperature);
 
-          message = "[\n {\n  \"PH\": \"" + String(phLevel) + "\",\n \"Light Sensor\": \"" + String(lightLevel) + "\",\n  \"EC\": \"" + String(ecLevel) + "\",\n  \"Humidity\": \"" + String(humidity) + "\",\n  \"Temperature\": \"" + String(temperature) + "\"\n }\n]\n\n";
+          message = 
+          "[\n {\n  
+          \"PH\": \"" + String(phLevel) + 
+          "\",\n \"Light Sensor\": \"" + String(lightLevel) + 
+          "\",\n  \"EC\": \"" + String(ecLevel) + 
+          "\",\n  \"Humidity\": \"" + String(humidity) + 
+          "\",\n  \"Temperature\": \"" + String(temperature) + 
+          "\"\n }\n]\n\n";
+
           ec.calibration(ecLevel,temperature); 
         }
 
         //Toggles LED
-        if (buf.endsWith("/T")) {
+        if (buf.endsWith("/toggleLight")) {
+          togglePin(LED_PIN)
         } 
       }
     }
